@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+      "target": "esnext",
+      "useDefineForClassFields": true,
+      "module": "esnext",
+      "moduleResolution": "node",
+      "strict": true,
+      "jsx": "preserve",
+      "sourceMap": true,
+      "resolveJsonModule": true,
+      "esModuleInterop": true,
+      "baseUrl": ".",
+      "paths": {
+        "@vitejs/plugin-vue": ["node_modules/@vitejs/plugin-vue/dist/cjs/index.js"]
+      },
+      "lib": ["esnext", "dom"]
+    },
+    "include": ["env.d.ts", "src/**/*"]
+  }
