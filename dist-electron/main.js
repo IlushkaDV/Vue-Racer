@@ -9,9 +9,7 @@ function createWindow() {
       nodeIntegration: true
     }
   });
-  mainWindow.loadFile(
-    "C:/Users/scorp/Desktop/WEB/vue-junmper1/electron/index.html"
-  );
+  mainWindow.loadFile("electron/index.html");
   mainWindow.setMenu(null);
   mainWindow.setFullScreen(true);
   mainWindow.webContents.openDevTools();

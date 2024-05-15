@@ -12,9 +12,7 @@ function createWindow() {
 	});
 
 	// Загрузка вашего приложения
-	mainWindow.loadFile(
-		"C:/Users/scorp/Desktop/WEB/vue-junmper1/electron/index.html"
-	);
+	mainWindow.loadFile("electron/index.html");
 
 	// Скрытие меню окна
 	mainWindow.setMenu(null);
