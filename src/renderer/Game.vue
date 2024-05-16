@@ -1,619 +1,618 @@
-<script setup lang="ts">
+<script setup lang="js">
 import { onMounted, nextTick } from "vue";
 import { Vector3 } from "./Vector3";
 
 const oninitCanvas = () => {
 	nextTick(() => {
 		/////////////////////////////////////////////////////////////////////////////////////
-		// debug settings
-		/////////////////////////////////////////////////////////////////////////////////////
+// Настройки отладки
+/////////////////////////////////////////////////////////////////////////////////////
 
-		// enable debug features
-		let debug = 0;
-		// remove pointer lock for 2k build
-		let usePointerLock = 1;
+// Включить отладочные функции
+let debug = 0;
+// Удалить блокировку указателя для сборки 2k
+let usePointerLock = 1;
 
-		/////////////////////////////////////////////////////////////////////////////////////
-		// draw settings
-		/////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////
+// Настройки рисования
+/////////////////////////////////////////////////////////////////////////////////////
 
-		// canvas 2d context
-		let c = document.getElementById("canvas");
-		let context = c.getContext("2d");
+// Контекст canvas 2D
+let c = document.getElementById("canvas");
+let context = c.getContext("2d");
 
-		// how many road segments to draw in front of player
-		let drawDistance = 800;
-		// FOV of camera (1 / Math.tan((fieldOfView/2) * Math.PI/180))
-		let cameraDepth = 1;
-		// length of each road segment
-		let roadSegmentLength = 100;
-		// how wide is road
-		let roadWidth = 500;
-		// with of road plus warning track
-		let warningTrackWidth = 150;
-		// width of the dashed line in the road
-		let dashLineWidth = 9;
-		// player can not move this far from center of road
-		let maxPlayerX = 2e3;
-		// how many mountains are there
-		let mountainCount = 30;
-		// inverse frame rate
-		let timeDelta = 1 / 60;
+// Сколько дорожных сегментов рисовать перед игроком
+let drawDistance = 800;
+// FOV камеры (1 / Math.tan((угол обзора/2) * Math.PI/180))
+let cameraDepth = 1;
+// Длина каждого дорожного сегмента
+let roadSegmentLength = 100;
+// Какая ширина у дороги
+let roadWidth = 500;
+// Ширина дороги плюс предупредительная полоса
+let warningTrackWidth = 150;
+// Ширина пунктирной линии на дороге
+let dashLineWidth = 9;
+// Игрок не может двигаться дальше от центра дороги
+let maxPlayerX = 2e3;
+// Сколько гор в игре
+let mountainCount = 30;
+// Обратная частота кадров
+let timeDelta = 1 / 60;
 
-		/////////////////////////////////////////////////////////////////////////////////////
-		// player settings
-		/////////////////////////////////////////////////////////////////////////////////////
-		// how high is player above ground
-		let playerHeight = 150;
-		// limit max player speed
-		let playerMaxSpeed = 300;
-		// player acceleration
-		let playerAccel = 1;
-		// player acceleration when breaking
-		let playerBrake = -3;
-		// player turning rate
-		let playerTurnControl = 0.2;
-		// z speed added for jump
-		let playerJumpSpeed = 25;
-		// spring players pitch
-		let playerSpringConstant = 0.01;
-		// slow down from collisions
-		let playerCollisionSlow = 0.1;
-		// speed that camera pitch changes
-		let pitchLerp = 0.1;
-		// dampen the pitch spring
-		let pitchSpringDamping = 0.9;
-		// bounce elasticity (2 is full bounce, 1 is none)
-		let elasticity = 1.2;
-		// how much to pull player on turns
-		let centrifugal = 0.002;
-		// dampen player z speed
-		let forwardDamping = 0.999;
-		// dampen player x speed
-		let lateralDamping = 0.7;
-		// more damping when off road
-		let offRoadDamping = 0.98;
-		// gravity to apply in y axis
-		let gravity = -1;
-		// scale of player turning to rotate camera
-		let cameraHeadingScale = 2;
-		// how much to rotate world around turns
-		let worldRotateScale = 0.00005;
+/////////////////////////////////////////////////////////////////////////////////////
+// Настройки игрока
+/////////////////////////////////////////////////////////////////////////////////////
+// Насколько высоко находится игрок над землей
+let playerHeight = 150;
+// Максимальная скорость игрока
+let playerMaxSpeed = 300;
+// Ускорение игрока
+let playerAccel = 1;
+// Ускорение игрока при торможении
+let playerBrake = -3;
+// Скорость поворота игрока
+let playerTurnControl = 0.2;
+// Скорость z добавляемая для прыжка
+let playerJumpSpeed = 25;
+// Пружина управления креном игрока
+let playerSpringConstant = 0.01;
+// Замедление от столкновений
+let playerCollisionSlow = 0.1;
+// Скорость изменения угла камеры
+let pitchLerp = 0.1;
+// Уменьшение пружины крена
+let pitchSpringDamping = 0.9;
+// Эластичность отскока (2 - полный отскок, 1 - ни одного)
+let elasticity = 1.2;
+// Насколько сильно тянуть игрока на поворотах
+let centrifugal = 0.002;
+// Затухание скорости игрока по z
+let forwardDamping = 0.999;
+// Затухание скорости игрока по x
+let lateralDamping = 0.7;
+// Больше затухания, когда за пределами дороги
+let offRoadDamping = 0.98;
+// Гравитация для применения по оси y
+let gravity = -1;
+// Масштаб поворота игрока для поворота камеры
+let cameraHeadingScale = 2;
+// Насколько поворачивать мир вокруг поворотов
+let worldRotateScale = 0.00005;
 
-		/////////////////////////////////////////////////////////////////////////////////////
-		// level settings
-		/////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////
+// Настройки уровня
+/////////////////////////////////////////////////////////////////////////////////////
 
-		// time to start with
-		const maxTime = 20;
-		// how much time for getting to checkpoint
-		const checkPointTime = 10;
-		// how far between checkpoints
-		const checkPointDistance = 1e5;
-		// how many checkpoints before max difficulty
-		const checkpointMaxDifficulty = 9;
-		// how many sections until end of the road
-		const roadEnd = 1e4;
+// Время для начала
+const maxTime = 20;
+// Сколько времени на прохождение до точки контроля
+const checkPointTime = 10;
+// Как далеко между точками контроля
+const checkPointDistance = 1e5;
+// Сколько контрольных точек до максимальной сложности
+const checkpointMaxDifficulty = 9;
+// Сколько секций до конца дороги
+const roadEnd = 1e4;
 
-		/////////////////////////////////////////////////////////////////////////////////////
-		// global game variables
-		/////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////
+// Глобальные игровые переменные
+/////////////////////////////////////////////////////////////////////////////////////
 
-		// player position 3d vector
-		let playerPos;
-		// player velocity 3d vector
-		let playerVelocity;
-		// spring for player pitch bounce
-		let playerPitchSpring;
-		// velocity of pitch spring
-		let playerPitchSpringVelocity;
-		// pitch of road, or 0 if player is in air
-		let playerPitchRoad;
-		// how many frames player has been in air
-		let playerAirFrame;
-		// heading to turn skybox
-		let worldHeading;
-		// random seed for level
-		let randomSeed;
-		// save the starting seed for active use
-		let startRandomSeed;
-		// distance of next checkpoint
-		let nextCheckPoint;
-		// current hue shift for all hsl colors
-		let hueShift;
-		// the list of road segments
-		let road;
-		// time left before game over
-		let time;
-		// time of last update
-		let lastUpdate = 0;
-		// frame rate adjustment
-		let timeBuffer = 0;
+// Позиция игрока в виде 3D вектора
+let playerPos;
+// Скорость игрока в виде 3D вектора
+let playerVelocity;
+// Пружина для крена игрока
+let playerPitchSpring;
+// Скорость пружины крена игрока
+let playerPitchSpringVelocity;
+// Крен дороги, или 0, если игрок в воздухе
+let playerPitchRoad;
+// Сколько кадров игрок в воздухе
+let playerAirFrame;
+// Направление для поворота небесного фона
+let worldHeading;
+// Случайное число для уровня
+let randomSeed;
+// Сохранение начального числа для активного использования
+let startRandomSeed;
+// Расстояние до следующей точки контроля
+let nextCheckPoint;
+// Текущее смещение оттенка для всех цветов HSL
+let hueShift;
+// Список дорожных сегментов
+let road;
+// Время до конца игры
+let time;
+// Время последнего обновления
+let lastUpdate = 0;
+// Коррекция частоты кадров
+let timeBuffer = 0;
 
-		function StartLevel() {
-			/////////////////////////////////////////////////////////////////////////////////////
-			// build the road with procedural generation
-			/////////////////////////////////////////////////////////////////////////////////////
+function StartLevel() {
+	/////////////////////////////////////////////////////////////////////////////////////
+	// Построить дорогу с процедурной генерацией
+	/////////////////////////////////////////////////////////////////////////////////////
 
-			// init end of section distance
-			let roadGenSectionDistanceMax = 0;
-			// starting road width
-			let roadGenWidth = roadWidth;
-			// distance left for this section
-			let roadGenSectionDistance = 0;
-			// length of taper
-			let roadGenTaper = 0;
-			// X wave frequency
-			let roadGenWaveFrequencyX = 0;
-			// Y wave frequency
-			let roadGenWaveFrequencyY = 0;
-			// X wave amplitude (turn size)
-			let roadGenWaveScaleX = 0;
-			// Y wave amplitude (hill size)
-			let roadGenWaveScaleY = 0;
-			// set random seed
-			startRandomSeed = randomSeed = Date.now();
-			// clear list of road segments
-			road = [];
+	// Начальное расстояние для сегмента
+	let roadGenSectionDistanceMax = 0;
+	// Начальная ширина дороги
+	let roadGenWidth = roadWidth;
+	// Расстояние, оставшееся для этого сегмента
+	let roadGenSectionDistance = 0;
+	// Длина конуса
+	let roadGenTaper = 0;
+	// Частота волны X
+	let roadGenWaveFrequencyX = 0;
+	// Частота волны Y
+	let roadGenWaveFrequencyY = 0;
+	// Масштаб волны X (размер поворота)
+	let roadGenWaveScaleX = 0;
+	// Масштаб волны Y (размер холма)
+	let roadGenWaveScaleY = 0;
+	// Установить случайное число
+	startRandomSeed = randomSeed = Date.now();
+	// Очистить список дорожных сегментов
+	road = [];
 
-			/////////////////////////////////////////////////////////////////////////////////////
-			// generate the road
-			/////////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////
+	// Создание дороги
+	/////////////////////////////////////////////////////////////////////////////////////
 
-			// build road past end
-			for (let i = 0; i < roadEnd * 2; ++i) {
-				// check for end of section
-				if (roadGenSectionDistance++ > roadGenSectionDistanceMax) {
-					// calculate difficulty percent
-					// difficulty
-					const difficulty = Math.min(
-						1,
-						(i * roadSegmentLength) /
-							checkPointDistance /
-							checkpointMaxDifficulty
-					);
-
-					/////////////////////////////////////////////////////////////////////////////////////
-					// randomize road settings
-					/////////////////////////////////////////////////////////////////////////////////////
-
-					// road width
-					roadGenWidth =
-						roadWidth *
-						Random(1 - difficulty * 0.7, 3 - 2 * difficulty);
-					// X frequency
-					roadGenWaveFrequencyX = Random(
-						Lerp(difficulty, 0.01, 0.02)
-					);
-					// Y frequency
-					roadGenWaveFrequencyY = Random(
-						Lerp(difficulty, 0.01, 0.03)
-					);
-					// X scale
-					roadGenWaveScaleX =
-						i > roadEnd ? 0 : Random(Lerp(difficulty, 0.2, 0.6));
-					// Y scale
-					roadGenWaveScaleY = Random(Lerp(difficulty, 1e3, 2e3));
-
-					/////////////////////////////////////////////////////////////////////////////////////
-					// apply taper and move back
-					/////////////////////////////////////////////////////////////////////////////////////
-
-					// randomize taper
-					roadGenTaper = Random(99, 1e3) | 0;
-					// randomize segment distance
-					roadGenSectionDistanceMax = roadGenTaper + Random(99, 1e3);
-					// reset section distance
-					roadGenSectionDistance = 0;
-					// subtract taper
-					i -= roadGenTaper;
-				}
-
-				/////////////////////////////////////////////////////////////////////////////////////
-				// make a wavy road
-				/////////////////////////////////////////////////////////////////////////////////////
-
-				// road X
-				const x =
-					Math.sin(i * roadGenWaveFrequencyX) * roadGenWaveScaleX;
-				// road Y
-				const y =
-					Math.sin(i * roadGenWaveFrequencyY) * roadGenWaveScaleY;
-				// get or make road segment
-				road[i] = road[i] ? road[i] : { x: x, y: y, w: roadGenWidth };
-
-				/////////////////////////////////////////////////////////////////////////////////////
-				// apply taper from last section
-				/////////////////////////////////////////////////////////////////////////////////////
-
-				// get taper percent
-				const p = Clamp(roadGenSectionDistance / roadGenTaper, 0, 1);
-				// X pos and taper
-				road[i].x = Lerp(p, road[i].x, x);
-				// Y pos and taper
-				road[i].y = Lerp(p, road[i].y, y);
-				// check for road end, width and taper
-				road[i].w = i > roadEnd ? 0 : Lerp(p, road[i].w, roadGenWidth);
-				// road pitch angle
-				road[i].a = road[i - 1]
-					? Math.atan2(road[i - 1].y - road[i].y, roadSegmentLength)
-					: 0;
-			}
-
-			/////////////////////////////////////////////////////////////////////////////////////
-			// init game
-			/////////////////////////////////////////////////////////////////////////////////////
-
-			// reset everything
-			playerVelocity = new Vector3(
-				(playerPitchSpring =
-					playerPitchSpringVelocity =
-					playerPitchRoad =
-					hueShift =
-						0)
+	// Построить дорогу за пределами конца
+	for (let i = 0; i < roadEnd * 2; ++i) {
+		// Проверить конец сегмента
+		if (roadGenSectionDistance++ > roadGenSectionDistanceMax) {
+			// Вычислить сложность в процентах
+			const difficulty = Math.min(
+				1,
+				(i * roadSegmentLength) /
+					checkPointDistance /
+					checkpointMaxDifficulty
 			);
-			// set player pos
-			playerPos = new Vector3(0, playerHeight);
-			// randomize world heading
-			worldHeading = randomSeed;
-			// init next checkpoint
-			nextCheckPoint = checkPointDistance;
-			// set the starting time
-			time = maxTime;
+
+			/////////////////////////////////////////////////////////////////////////////////////
+			// Случайные настройки дороги
+			/////////////////////////////////////////////////////////////////////////////////////
+
+			// Ширина дороги
+			roadGenWidth =
+				roadWidth *
+				Random(1 - difficulty * 0.7, 3 - 2 * difficulty);
+			// Частота X
+			roadGenWaveFrequencyX = Random(
+				Lerp(difficulty, 0.01, 0.02)
+			);
+			// Частота Y
+			roadGenWaveFrequencyY = Random(
+				Lerp(difficulty, 0.01, 0.03)
+			);
+			// Масштаб X
+			roadGenWaveScaleX =
+				i > roadEnd ? 0 : Random(Lerp(difficulty, 0.2, 0.6));
+			// Масштаб Y
+			roadGenWaveScaleY = Random(Lerp(difficulty, 1e3, 2e3));
+
+			/////////////////////////////////////////////////////////////////////////////////////
+			// Применение конуса и перемещение назад
+			/////////////////////////////////////////////////////////////////////////////////////
+
+			// Случайный конус
+			roadGenTaper = Random(99, 1e3) | 0;
+			// Случайное расстояние сегмента
+			roadGenSectionDistanceMax = roadGenTaper + Random(99, 1e3);
+			// Сброс расстояния сегмента
+			roadGenSectionDistance = 0;
+			// Вычесть конус
+			i -= roadGenTaper;
 		}
 
-		function Update() {
-			// time regulation, in case running faster then 60 fps, though it causes judder REMOVE FROM MINFIED
-			const now = performance.now();
-			if (lastUpdate) {
-				// limit to 60 fps
-				const delta = now - lastUpdate;
-				if (timeBuffer + delta < 0) {
-					// running fast
-					requestAnimationFrame(Update);
-					return;
-				}
+		/////////////////////////////////////////////////////////////////////////////////////
+		// Создание волнистой дороги
+		/////////////////////////////////////////////////////////////////////////////////////
 
-				// update time buffer
-				timeBuffer += delta;
-				timeBuffer -= timeDelta * 1e3;
-				if (timeBuffer > timeDelta * 1e3) {
-					// if running too slow
-					timeBuffer = 0;
-				}
-			}
-			lastUpdate = now;
+		// Дорога X
+		const x =
+			Math.sin(i * roadGenWaveFrequencyX) * roadGenWaveScaleX;
+		// Дорога Y
+		const y =
+			Math.sin(i * roadGenWaveFrequencyY) * roadGenWaveScaleY;
+		// Получить или создать сегмент дороги
+		road[i] = road[i] ? road[i] : { x: x, y: y, w: roadGenWidth };
 
-			// start frame
-			if (snapshot) {
-				c.width | 0;
-			} // DEBUG REMOVE FROM MINFIED
-			// clear the screen and set size
-			else (c.width = window.innerWidth), (c.height = window.innerHeight);
+		/////////////////////////////////////////////////////////////////////////////////////
+		// Применение конуса из последнего сегмента
+		/////////////////////////////////////////////////////////////////////////////////////
 
-			if (!c.width) {
-				// REMOVE FROM MINFIED
-				// fix bug on itch, wait for canvas before updating
-				requestAnimationFrame(Update);
-				return;
-			}
+		// Получить процент конуса
+		const p = Clamp(roadGenSectionDistance / roadGenTaper, 0, 1);
+		// Позиция X и конус
+		road[i].x = Lerp(p, road[i].x, x);
+		// Позиция Y и конус
+		road[i].y = Lerp(p, road[i].y, y);
+		// Проверка на конец дороги, ширину и конус
+		road[i].w = i > roadEnd ? 0 : Lerp(p, road[i].w, roadGenWidth);
+		// Угол наклона дороги
+		road[i].a = road[i - 1]
+			? Math.atan2(road[i - 1].y - road[i].y, roadSegmentLength)
+			: 0;
+	}
 
-			// set mouse down if pointer lock released
-			if (
-				usePointerLock &&
-				document.pointerLockElement !== c &&
-				!touchMode
-			) {
-				mouseDown = 1;
-			}
+	/////////////////////////////////////////////////////////////////////////////////////
+	// Инициализация игры
+	/////////////////////////////////////////////////////////////////////////////////////
 
-			UpdateDebugPre(); // DEBUG REMOVE FROM MINFIED
+	// Сбросить все
+	playerVelocity = new Vector3(
+		(playerPitchSpring =
+			playerPitchSpringVelocity =
+			playerPitchRoad =
+			hueShift =
+				0)
+	);
+	// Установить позицию игрока
+	playerPos = new Vector3(0, playerHeight);
+	// Случайный поворот мира
+	worldHeading = randomSeed;
+	// Инициализировать следующую точку контроля
+	nextCheckPoint = checkPointDistance;
+	// Установить начальное время
+	time = maxTime;
+}
 
-			/////////////////////////////////////////////////////////////////////////////////////
-			// update player - controls and physics
-			/////////////////////////////////////////////////////////////////////////////////////
+function Update() {
+	// Регулировка времени, если запущено быстрее, чем 60 кадров в секунду, хотя это вызывает дрожь
+	const now = performance.now();
+	if (lastUpdate) {
+		// Ограничить до 60 кадров в секунду
+		const delta = now - lastUpdate;
+		if (timeBuffer + delta < 0) {
+			// Быстрый запуск
+			requestAnimationFrame(Update);
+			return;
+		}
 
-			// get player road segment
+		// Обновить буфер времени
+		timeBuffer += delta;
+		timeBuffer -= timeDelta * 1e3;
+		if (timeBuffer > timeDelta * 1e3) {
+			// Если запускается слишком медленно
+			timeBuffer = 0;
+		}
+	}
+	lastUpdate = now;
 
-			// current player road segment
-			const playerRoadSegment = (playerPos.z / roadSegmentLength) | 0;
-			// how far player is along current segment
-			const playerRoadSegmentPercent =
-				(playerPos.z / roadSegmentLength) % 1;
+	// Начало кадра
+	if (snapshot) {
+		c.width | 0;
+	} // ОТЛАДКА УБРАТЬ ИЗ МИНИФИЦИРОВАННОГО
+	// Очистить экран и установить размер
+	else (c.width = window.innerWidth), (c.height = window.innerHeight);
 
-			/////////////////////////////////////////////////////////////////////////////////////
-			// get lerped values between last and current road segment
-			/////////////////////////////////////////////////////////////////////////////////////
+	if (!c.width) {
+		// УБРАТЬ
+		// Исправить ошибку на itch, дождитесь canvas перед обновлением
+		requestAnimationFrame(Update);
+		return;
+	}
 
-			const playerRoadX = Lerp(
-				playerRoadSegmentPercent,
-				road[playerRoadSegment].x,
-				road[playerRoadSegment + 1].x
-			);
-			const playerRoadY =
+	// Установить щелчок мыши, если блокировка указателя освобождена
+	if (
+		usePointerLock &&
+		document.pointerLockElement !== c &&
+		!touchMode
+	) {
+		mouseDown = 1;
+	}
+
+	UpdateDebugPre(); // ОТЛАДКА УБРАТЬ ИЗ МИНИФИЦИРОВАННОГО
+
+/////////////////////////////////////////////////////////////////////////////////////
+// обновление игрока - управление и физика
+/////////////////////////////////////////////////////////////////////////////////////
+
+// получить сегмент дороги игрока
+
+// текущий сегмент дороги игрока
+const playerRoadSegment = (playerPos.z / roadSegmentLength) | 0;
+// насколько игрок прошел по текущему сегменту
+const playerRoadSegmentPercent =
+	(playerPos.z / roadSegmentLength) % 1;
+
+/////////////////////////////////////////////////////////////////////////////////////
+// получить лерпированные значения между последним и текущим сегментом дороги
+/////////////////////////////////////////////////////////////////////////////////////
+
+const playerRoadX = Lerp(
+	playerRoadSegmentPercent,
+	road[playerRoadSegment].x,
+	road[playerRoadSegment + 1].x
+);
+const playerRoadY =
+	Lerp(
+		playerRoadSegmentPercent,
+		road[playerRoadSegment].y,
+		road[playerRoadSegment + 1].y
+	) + playerHeight;
+const roadPitch = Lerp(
+	playerRoadSegmentPercent,
+	road[playerRoadSegment].a,
+	road[playerRoadSegment + 1].a
+);
+
+// сохранить последнюю скорость
+const playerVelocityLast = playerVelocity.Add(0);
+// гравитация
+playerVelocity.y += gravity;
+// применить боковое затухание
+playerVelocity.x *= lateralDamping;
+// применить затухание, предотвратить движение назад
+playerVelocity.z = Math.max(
+	0,
+	time ? forwardDamping * playerVelocity.z : 0
+);
+// добавить скорость игрока
+playerPos = playerPos.Add(playerVelocity);
+
+// поворот
+const playerTurnAmount = Lerp(
+	playerVelocity.z / playerMaxSpeed,
+	mouseX * playerTurnControl,
+	0
+);
+// обновить скорость x
+playerVelocity.x +=
+	// применить поворот
+	playerVelocity.z * playerTurnAmount -
+	// применить центробежную силу
+	playerVelocity.z ** 2 * centrifugal * playerRoadX;
+// ограничить положение игрока по x
+playerPos.x = Clamp(playerPos.x, -maxPlayerX, maxPlayerX);
+
+/////////////////////////////////////////////////////////////////////////////////////
+// проверить, находится ли на земле
+/////////////////////////////////////////////////////////////////////////////////////
+
+if (playerPos.y < playerRoadY) {
+	/////////////////////////////////////////////////////////////////////////////////////
+	// отскок скорости от нормали земли
+	/////////////////////////////////////////////////////////////////////////////////////
+
+	// соответствовать y земной плоскости
+	playerPos.y = playerRoadY;
+	// сбросить воздушные кадры грации
+	playerAirFrame = 0;
+	// получить нормаль земли
+	playerVelocity = new Vector3(
+		0,
+		Math.cos(roadPitch),
+		Math.sin(roadPitch)
+	)
+		// применить отскок
+		.Multiply(
+			-elasticity *
+				// скалярное произведение дороги и скорости
+				(Math.cos(roadPitch) * playerVelocity.y +
+					Math.sin(roadPitch) * playerVelocity.z)
+		)
+		// добавить скорость
+		.Add(playerVelocity);
+
+	playerVelocity.z +=
+		// применить тормоз
+		mouseDown
+			? playerBrake
+			: // применить ускорение
+			  Lerp(
+					playerVelocity.z / playerMaxSpeed,
+					mouseWasPressed * playerAccel,
+					0
+			  );
+
+	// проверить, находится ли вне дороги
+	if (Math.abs(playerPos.x) > road[playerRoadSegment].w) {
+		// замедлиться при выходе с дороги
+		playerVelocity.z *= offRoadDamping;
+		// отскок при выходе с дороги
+		playerPitchSpring += Math.sin(playerPos.z / 99) ** 4 / 99;
+	}
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+// обновление прыжка
+/////////////////////////////////////////////////////////////////////////////////////
+
+// проверить прыжок
+if (
+	playerAirFrame++ < 6 &&
+	mouseDown &&
+	mouseUpFrames &&
+	mouseUpFrames < 9 &&
+	time
+) {
+	// применить скорость прыжка
+	playerVelocity.y += playerJumpSpeed;
+	// предотвратить повторный прыжок
+	playerAirFrame = 9;
+}
+// обновить кадры отпускания мыши для двойного щелчка
+mouseUpFrames = mouseDown ? 0 : mouseUpFrames + 1;
+// вычислить процент выше земли
+const airPercent = (playerPos.y - playerRoadY) / 99;
+// наклон вниз с вертикальной скоростью
+playerPitchSpringVelocity += Lerp(
+	airPercent,
+	0,
+	playerVelocity.y / 4e4
+);
+
+/////////////////////////////////////////////////////////////////////////////////////
+// обновление тангажа игрока
+/////////////////////////////////////////////////////////////////////////////////////
+
+// наклон вниз с впереди идущим ускорением
+playerPitchSpringVelocity +=
+	(playerVelocity.z - playerVelocityLast.z) / 2e3;
+// применить постоянную пружину тангажа
+playerPitchSpringVelocity -=
+	playerPitchSpring * playerSpringConstant;
+// затухание пружины тангажа
+playerPitchSpringVelocity *= pitchSpringDamping;
+// обновить пружину тангажа
+playerPitchSpring += playerPitchSpringVelocity;
+// соответствовать наклону дороги
+playerPitchRoad = Lerp(
+	pitchLerp,
+	playerPitchRoad,
+	Lerp(airPercent, -roadPitch, 0)
+);
+// обновить тангаж игрока
+const playerPitch = playerPitchSpring + playerPitchRoad;
+
+// пересечение чекпоинта
+if (playerPos.z > nextCheckPoint) {
+	// добавить время
+	time += checkPointTime;
+	// установить следующий чекпоинт
+	nextCheckPoint += checkPointDistance;
+	// сдвиг цвета
+	hueShift += 36;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+// рисование фона - небо, солнце/луна, горы и горизонт
+/////////////////////////////////////////////////////////////////////////////////////
+
+// многоразовые локальные переменные
+let x, y, w, i;
+
+// установить начальное зерно
+randomSeed = startRandomSeed;
+// обновить угол мира
+worldHeading = ClampAngle(
+	worldHeading + playerVelocity.z * playerRoadX * worldRotateScale
+);
+
+/////////////////////////////////////////////////////////////////////////////////////
+// предварительно рассчитать масштаб проекции, перевернуть y, потому что y + внизу на холсте
+/////////////////////////////////////////////////////////////////////////////////////
+
+// получить масштаб проекции
+const projectScale = new Vector3(1, -1, 1).Multiply(
+	c.width / 2 / cameraDepth
+);
+// повернуть камеру с игроком
+const cameraHeading = playerTurnAmount * cameraHeadingScale;
+// применить угол с смещением
+const cameraOffset = Math.sin(cameraHeading) / 2;
+
+/////////////////////////////////////////////////////////////////////////////////////
+// рисовать небо
+/////////////////////////////////////////////////////////////////////////////////////
+
+// яркость от солнца
+const lighting = Math.cos(worldHeading);
+// получить горизонтальную линию
+const horizon =
+	c.height / 2 - Math.tan(playerPitch) * projectScale.y;
+// линейный градиент для неба
+const g = context.createLinearGradient(
+	0,
+	horizon - c.height / 2,
+	0,
+	horizon
+);
+// верхний цвет неба
+g.addColorStop(
+	0,
+	LSHA(
+		39 + lighting * 25,
+		49 + lighting * 19,
+		230 - lighting * 19
+	)
+);
+// нижний цвет неба
+g.addColorStop(1, LSHA(5, 79, 250 - lighting * 9));
+// нарисовать небо
+DrawPoly(
+	c.width / 2,
+	0,
+	c.width / 2,
+	c.width / 2,
+	c.height,
+	c.width / 2,
+	g
+);
+
+/////////////////////////////////////////////////////////////////////////////////////
+// рисовать солнце и луну
+/////////////////////////////////////////////////////////////////////////////////////
+
+// 0 - солнце, 1 - луна
+for (i = 2; i--; ) {
+	// радиальный градиент для солнца
+	const g = context.createRadialGradient(
+		// угол 0 - центр
+		(x =
+			c.width *
+			(0.5 +
 				Lerp(
-					playerRoadSegmentPercent,
-					road[playerRoadSegment].y,
-					road[playerRoadSegment + 1].y
-				) + playerHeight;
-			const roadPitch = Lerp(
-				playerRoadSegmentPercent,
-				road[playerRoadSegment].a,
-				road[playerRoadSegment + 1].a
-			);
+					// процент угла солнца
+					(worldHeading / Math.PI / 2 + 0.5 + i / 2) % 1,
+					// позиция x солнца, переместить далеко для заворачивания
+					4,
+					-4
+				) -
+				cameraOffset)),
+		// позиция y солнца
+		(y = horizon - c.width / 5),
+		// размер солнца
+		c.width / 25,
+		// конечная позиция и размер солнца
+		x,
+		y,
+		i ? c.width / 23 : c.width
+	);
+	// начальный цвет солнца
+	g.addColorStop(0, LSHA(i ? 70 : 99));
+	// конечный цвет солнца
+	g.addColorStop(1, LSHA(0, 0, 0, 0));
+	// нарисовать солнце
+	DrawPoly(
+		c.width / 2,
+		0,
+		c.width / 2,
+		c.width / 2,
+		c.height,
+		c.width / 2,
+		g
+	);
+}
 
-			// save last velocity
-			const playerVelocityLast = playerVelocity.Add(0);
-			// gravity
-			playerVelocity.y += gravity;
-			// apply lateral damping
-			playerVelocity.x *= lateralDamping;
-			// apply damping, prevent moving backwards
-			playerVelocity.z = Math.max(
-				0,
-				time ? forwardDamping * playerVelocity.z : 0
-			);
-			// add player velocity
-			playerPos = playerPos.Add(playerVelocity);
-
-			// turning
-			const playerTurnAmount = Lerp(
-				playerVelocity.z / playerMaxSpeed,
-				mouseX * playerTurnControl,
-				0
-			);
-			// update x velocity
-			playerVelocity.x +=
-				// apply turn
-				playerVelocity.z * playerTurnAmount -
-				// apply centrifugal force
-				playerVelocity.z ** 2 * centrifugal * playerRoadX;
-			// limit player x position
-			playerPos.x = Clamp(playerPos.x, -maxPlayerX, maxPlayerX);
-
-			/////////////////////////////////////////////////////////////////////////////////////
-			// check if on ground
-			/////////////////////////////////////////////////////////////////////////////////////
-
-			if (playerPos.y < playerRoadY) {
-				/////////////////////////////////////////////////////////////////////////////////////
-				// bounce velocity against ground normal
-				/////////////////////////////////////////////////////////////////////////////////////
-
-				// match y to ground plane
-				playerPos.y = playerRoadY;
-				// reset air grace frames
-				playerAirFrame = 0;
-				// get ground normal
-				playerVelocity = new Vector3(
-					0,
-					Math.cos(roadPitch),
-					Math.sin(roadPitch)
-				)
-					// apply bounce
-					.Multiply(
-						-elasticity *
-							// dot of road and velocity
-							(Math.cos(roadPitch) * playerVelocity.y +
-								Math.sin(roadPitch) * playerVelocity.z)
-					)
-					// add velocity
-					.Add(playerVelocity);
-
-				playerVelocity.z +=
-					// apply brake
-					mouseDown
-						? playerBrake
-						: // apply accel
-						  Lerp(
-								playerVelocity.z / playerMaxSpeed,
-								mouseWasPressed * playerAccel,
-								0
-						  );
-
-				// check if off road
-				if (Math.abs(playerPos.x) > road[playerRoadSegment].w) {
-					// slow down when off road
-					playerVelocity.z *= offRoadDamping;
-					// bump when off road
-					playerPitchSpring += Math.sin(playerPos.z / 99) ** 4 / 99;
-				}
-			}
-
-			/////////////////////////////////////////////////////////////////////////////////////
-			// update jump
-			/////////////////////////////////////////////////////////////////////////////////////
-
-			// check for jump
-			if (
-				playerAirFrame++ < 6 &&
-				mouseDown &&
-				mouseUpFrames &&
-				mouseUpFrames < 9 &&
-				time
-			) {
-				// apply jump velocity
-				playerVelocity.y += playerJumpSpeed;
-				// prevent jumping again
-				playerAirFrame = 9;
-			}
-			// update mouse up frames for double click
-			mouseUpFrames = mouseDown ? 0 : mouseUpFrames + 1;
-			// calculate above ground percent
-			const airPercent = (playerPos.y - playerRoadY) / 99;
-			// pitch down with vertical velocity
-			playerPitchSpringVelocity += Lerp(
-				airPercent,
-				0,
-				playerVelocity.y / 4e4
-			);
-
-			/////////////////////////////////////////////////////////////////////////////////////
-			// update player pitch
-			/////////////////////////////////////////////////////////////////////////////////////
-
-			// pitch down with forward accel
-			playerPitchSpringVelocity +=
-				(playerVelocity.z - playerVelocityLast.z) / 2e3;
-			// apply pitch spring constant
-			playerPitchSpringVelocity -=
-				playerPitchSpring * playerSpringConstant;
-			// dampen pitch spring
-			playerPitchSpringVelocity *= pitchSpringDamping;
-			// update pitch spring
-			playerPitchSpring += playerPitchSpringVelocity;
-			// match pitch to road
-			playerPitchRoad = Lerp(
-				pitchLerp,
-				playerPitchRoad,
-				Lerp(airPercent, -roadPitch, 0)
-			);
-			// update player pitch
-			const playerPitch = playerPitchSpring + playerPitchRoad;
-
-			// crossed checkpoint
-			if (playerPos.z > nextCheckPoint) {
-				// add more time
-				time += checkPointTime;
-				// set next checkpoint
-				nextCheckPoint += checkPointDistance;
-				// shift hue
-				hueShift += 36;
-			}
-
-			/////////////////////////////////////////////////////////////////////////////////////
-			// draw background - sky, sun/moon, mountains, and horizon
-			/////////////////////////////////////////////////////////////////////////////////////
-
-			// multi use local variables
-			let x, y, w, i;
-
-			// set start seed
-			randomSeed = startRandomSeed;
-			// update world angle
-			worldHeading = ClampAngle(
-				worldHeading + playerVelocity.z * playerRoadX * worldRotateScale
-			);
-
-			/////////////////////////////////////////////////////////////////////////////////////
-			// pre calculate projection scale, flip y because y+ is down on canvas
-			/////////////////////////////////////////////////////////////////////////////////////
-
-			// get projection scale
-			const projectScale = new Vector3(1, -1, 1).Multiply(
-				c.width / 2 / cameraDepth
-			);
-			// turn camera with player
-			const cameraHeading = playerTurnAmount * cameraHeadingScale;
-			// apply heading with offset
-			const cameraOffset = Math.sin(cameraHeading) / 2;
-
-			/////////////////////////////////////////////////////////////////////////////////////
-			// draw sky
-			/////////////////////////////////////////////////////////////////////////////////////
-
-			// brightness from sun
-			const lighting = Math.cos(worldHeading);
-			// get horizon line
-			const horizon =
-				c.height / 2 - Math.tan(playerPitch) * projectScale.y;
-			// linear gradient for sky
-			const g = context.createLinearGradient(
-				0,
-				horizon - c.height / 2,
-				0,
-				horizon
-			);
-			// top sky color
-			g.addColorStop(
-				0,
-				LSHA(
-					39 + lighting * 25,
-					49 + lighting * 19,
-					230 - lighting * 19
-				)
-			);
-			// bottom sky color
-			g.addColorStop(1, LSHA(5, 79, 250 - lighting * 9));
-			// draw sky
-			DrawPoly(
-				c.width / 2,
-				0,
-				c.width / 2,
-				c.width / 2,
-				c.height,
-				c.width / 2,
-				g
-			);
-
-			/////////////////////////////////////////////////////////////////////////////////////
-			// draw sun and moon
-			/////////////////////////////////////////////////////////////////////////////////////
-
-			// 0 is sun, 1 is moon
-			for (i = 2; i--; ) {
-				// radial gradient for sun
-				const g = context.createRadialGradient(
-					// angle 0 is center
-					(x =
-						c.width *
-						(0.5 +
-							Lerp(
-								// sun angle percent
-								(worldHeading / Math.PI / 2 + 0.5 + i / 2) % 1,
-								// sun x pos, move far away for wrap
-								4,
-								-4
-							) -
-							cameraOffset)),
-					// sun y pos
-					(y = horizon - c.width / 5),
-					// sun size
-					c.width / 25,
-					// sun end pos & size
-					x,
-					y,
-					i ? c.width / 23 : c.width
-				);
-				// sun start color
-				g.addColorStop(0, LSHA(i ? 70 : 99));
-				// sun end color
-				g.addColorStop(1, LSHA(0, 0, 0, 0));
-				// draw sun
-				DrawPoly(
-					c.width / 2,
-					0,
-					c.width / 2,
-					c.width / 2,
-					c.height,
-					c.width / 2,
-					g
-				);
-			}
-
-			/////////////////////////////////////////////////////////////////////////////////////
-			// draw mountains
-			/////////////////////////////////////////////////////////////////////////////////////
-			// draw every mountain
-			for (i = mountainCount; i--; ) {
-				// mountain random angle
-				const angle = ClampAngle(worldHeading + Random(19));
-				// mountain lighting
-				const lighting = Math.cos(angle - worldHeading);
-				DrawPoly(
-					// mountain x pos, move far away for wrap
-					(x =
-						c.width *
-						(0.5 +
-							Lerp(angle / Math.PI / 2 + 0.5, 4, -4) -
-							cameraOffset)),
-					// mountain base
-					(y = horizon),
-					// mountain width
+/////////////////////////////////////////////////////////////////////////////////////
+// рисовать горы
+/////////////////////////////////////////////////////////////////////////////////////
+// нарисовать каждую гору
+for (i = mountainCount; i--; ) {
+	// случайный угол горы
+	const angle = ClampAngle(worldHeading + Random(19));
+	// освещение горы
+	const lighting = Math.cos(angle - worldHeading);
+	DrawPoly(
+		// позиция x горы, переместить далеко для заворачивания
+		(x =
+			c.width *
+			(0.5 +
+				Lerp(angle / Math.PI / 2 + 0.5, 4, -4) -
+				cameraOffset)),
+		// основание горы
+		(y = horizon),
+					// ширина горы
 					(w = (Random(0.2, 0.8) ** 2 * c.width) / 2),
-					// random tip skew
+					// случайное смещение вершины
 					x + w * Random(-0.5, 0.5),
-					// mountain height
+					// высота горы
 					y - Random(0.5, 0.8) * w,
 					0,
 
@@ -626,10 +625,10 @@ const oninitCanvas = () => {
 			}
 
 			/////////////////////////////////////////////////////////////////////////////////////
-			// draw horizon
+			// рисование горизонта
 			/////////////////////////////////////////////////////////////////////////////////////
 
-			// horizon pos & size
+			// позиция и размер горизонта
 			DrawPoly(
 				c.width / 2,
 				horizon,
@@ -641,35 +640,35 @@ const oninitCanvas = () => {
 			);
 
 			/////////////////////////////////////////////////////////////////////////////////////
-			// draw road and objects
+			// рисование дороги и объектов
 			/////////////////////////////////////////////////////////////////////////////////////
 
-			// calculate road x offsets and projections
+			// вычислить смещения и проекции дороги по x
 			for (x = w = i = 0; i < drawDistance + 1; ) {
 				/////////////////////////////////////////////////////////////////////////////////////
-				// create road world position
+				// создать позицию дороги в мире
 				/////////////////////////////////////////////////////////////////////////////////////
 
-				// set road position
+				// установить позицию дороги
 				let p = new Vector3(
-					// sum local road offsets
+					// суммировать локальные смещения дороги
 					(x += w += road[playerRoadSegment + i].x),
-					// road y and z pos
+					// позиция y и z дороги
 					road[playerRoadSegment + i].y,
 					(playerRoadSegment + i) * roadSegmentLength
 				)
-					// subtract to get local space
+					// вычесть, чтобы получить локальное пространство
 					.Add(playerPos.Multiply(-1));
-				// rotate camera heading
+				// повернуть камеру
 				p.x =
 					p.x * Math.cos(cameraHeading) -
 					p.z * Math.sin(cameraHeading);
 
 				/////////////////////////////////////////////////////////////////////////////////////
-				// tilt camera pitch
+				// наклонить камеру по тангажу
 				/////////////////////////////////////////////////////////////////////////////////////
 
-				// invert z for projection
+				// инвертировать z для проекции
 				const z =
 					1 /
 					(p.z * Math.cos(playerPitch) - p.y * Math.sin(playerPitch));
@@ -677,51 +676,51 @@ const oninitCanvas = () => {
 				p.z = z;
 
 				/////////////////////////////////////////////////////////////////////////////////////
-				// project road segment to canvas space
+				// проецировать сегмент дороги на холст
 				/////////////////////////////////////////////////////////////////////////////////////
 
-				// set projected road point
+				// установить проекционную точку дороги
 				road[playerRoadSegment + i++].p =
-					// projection
+					// проекция
 					p
 						.Multiply(new Vector3(z, z, 1))
-						// scale
+						// масштабирование
 						.Multiply(projectScale)
-						// center on canvas
+						// центрирование на холсте
 						.Add(new Vector3(c.width / 2, c.height / 2));
 			}
 
 			/////////////////////////////////////////////////////////////////////////////////////
-			// draw the road segments
+			// нарисовать сегменты дороги
 			/////////////////////////////////////////////////////////////////////////////////////
 
-			// store the last segment
+			// сохранить последний сегмент
 			let segment2 = road[playerRoadSegment + drawDistance];
-			// iterate in reverse
+			// итерировать в обратном порядке
 			for (i = drawDistance; i--; ) {
 				const segment1 = road[playerRoadSegment + i];
-				// random seed for this segment
+				// случайное зерно для этого сегмента
 				randomSeed = startRandomSeed + playerRoadSegment + i;
-				// calculate segment lighting
+				// вычислить освещение сегмента
 				const lighting =
 					Math.sin(segment1.a) * Math.cos(worldHeading) * 99;
-				// projected point
+				// проекция точки
 				const p1 = segment1.p;
-				// last projected point
+				// последняя проекционная точка
 				const p2 = segment2.p;
-				// check near and far clip
+				// проверить ближний и дальний отсеки
 				if (p1.z < 1e5 && p1.z > 0) {
 					/////////////////////////////////////////////////////////////////////////////////////
-					// draw road segment
+					// нарисовать сегмент дороги
 					/////////////////////////////////////////////////////////////////////////////////////
 
-					// fade in road resolution
+					// размытость в разрешении дороги
 					if (i % (Lerp(i / drawDistance, 1, 9) | 0) == 0) {
 						/////////////////////////////////////////////////////////////////////////////////////
-						// ground
+						// земля
 						/////////////////////////////////////////////////////////////////////////////////////
 
-						// ground top & bottom
+						// верх и низ земли
 						DrawPoly(
 							c.width / 2,
 							p1.y,
@@ -729,25 +728,25 @@ const oninitCanvas = () => {
 							c.width / 2,
 							p2.y,
 							c.width / 2,
-							// ground color
+							// цвет земли
 							LSHA(25 + lighting, 30, 95)
 						);
 
 						/////////////////////////////////////////////////////////////////////////////////////
-						// warning track
+						// предупреждающая полоса
 						/////////////////////////////////////////////////////////////////////////////////////
-						// no warning track if thin
+						// нет предупреждающей полосы, если тонкая
 						if (segment1.w > 400) {
-							// warning track top
+							// верх предупреждающей полосы
 							DrawPoly(
 								p1.x,
 								p1.y,
 								p1.z * (segment1.w + warningTrackWidth),
-								// warning track bottom
+								// низ предупреждающей полосы
 								p2.x,
 								p2.y,
 								p2.z * (segment2.w + warningTrackWidth),
-								// warning track stripe color
+								// цвет полосы предупреждения
 								LSHA(
 									((playerRoadSegment + i) % 19 < 9
 										? 50
@@ -757,21 +756,21 @@ const oninitCanvas = () => {
 						}
 
 						/////////////////////////////////////////////////////////////////////////////////////
-						// road
+						// дорога
 						/////////////////////////////////////////////////////////////////////////////////////
 
-						// segment distance
+						// расстояние сегмента
 						const z = (playerRoadSegment + i) * roadSegmentLength;
-						// road top
+						// верх дороги
 						DrawPoly(
 							p1.x,
 							p1.y,
 							p1.z * segment1.w,
-							// road bottom
+							// низ дороги
 							p2.x,
 							p2.y,
 							p2.z * segment2.w,
-							// road color and checkpoint
+							// цвет дороги и чекпоинт
 							LSHA(
 								(z % checkPointDistance < 300 ? 70 : 7) +
 									lighting
@@ -779,82 +778,82 @@ const oninitCanvas = () => {
 						);
 
 						/////////////////////////////////////////////////////////////////////////////////////
-						// dashed lines
+						// пунктирные линии
 						/////////////////////////////////////////////////////////////////////////////////////
 
-						// no dash lines if very thin
+						// нет пунктирных линий, если очень тонкая
 						if (segment1.w > 300) {
-							// make dashes and skip if far out
+							// сделать пунктирные линии и пропустить, если далеко
 							(playerRoadSegment + i) % 9 == 0 &&
 								i < drawDistance / 3 &&
-								// dash lines top
+								// пунктирные линии сверху
 								DrawPoly(
 									p1.x,
 									p1.y,
 									p1.z * dashLineWidth,
-									// dash lines bottom
+									// пунктирные линии снизу
 									p2.x,
 									p2.y,
 									p2.z * dashLineWidth,
-									// dash lines color
+									// цвет пунктирных линий
 									LSHA(70 + lighting)
 								);
 						}
-						// prep for next segment
+						// подготовка к следующему сегменту
 						segment2 = segment1;
 					}
 
 					/////////////////////////////////////////////////////////////////////////////////////
-					// random object (tree or rock)
+					// случайный объект (дерево или камень)
 					/////////////////////////////////////////////////////////////////////////////////////
 
-					// check for road object
+					// проверить объект дороги
 					if (Random() < 0.2 && playerRoadSegment + i > 29) {
 						/////////////////////////////////////////////////////////////////////////////////////
-						// player object collision check
+						// проверка на столкновение с объектом игрока
 						/////////////////////////////////////////////////////////////////////////////////////
 
-						// segment distance
+						// расстояние сегмента
 						const z = (playerRoadSegment + i) * roadSegmentLength;
-						// object type & height
+						// тип объекта и высота
 						const height = (Random(2) | 0) * 400;
-						// choose object pos
+						// выбрать позицию объекта
 						x = 2 * roadWidth * Random(10, -10) * Random(9);
-						// prevent hitting the same object
+						// предотвратить столкновение с тем же объектом
 						if (
 							!segment1.h &&
-							// x collision
+							// столкновение по x
 							Math.abs(playerPos.x - x) < 200 &&
-							// z collision
+							// столкновение по z
 							Math.abs(playerPos.z - z) < 200 &&
-							// y collision + object height
+							// столкновение по y + высота объекта
 							playerPos.y - playerHeight <
 								segment1.y + 200 + height
 						) {
-							// stop player and mark hit
+							// остановить игрока и пометить столкновение
 							playerVelocity = playerVelocity.Multiply(
 								(segment1.h = playerCollisionSlow)
 							);
 						}
 
 						/////////////////////////////////////////////////////////////////////////////////////
-						// draw road object
+						// рисование объекта дороги
 						/////////////////////////////////////////////////////////////////////////////////////
 
-						// fade in object alpha
+						// размытость альфа объекта
 						const alpha = Lerp(i / drawDistance, 4, 0);
 						if (height) {
-							// tree
-							// trunk bottom
+							// дерево
+							// низ ствола
 							DrawPoly(
 								(x = p1.x + p1.z * x),
 								p1.y,
 								p1.z * 29,
-								// trunk top
+								// верх ствола
 								x,
 								p1.y - 99 * p1.z,
 								p1.z * 29,
-								// trunk color
+								// цвет ствола
 								LSHA(
 									5 + Random(9),
 									50 + Random(9),
@@ -862,16 +861,16 @@ const oninitCanvas = () => {
 									alpha
 								)
 							);
-							// leaves bottom
+							// низ листвы
 							DrawPoly(
 								x,
 								p1.y - Random(50, 99) * p1.z,
 								p1.z * Random(199, 250),
-								// leaves top
+								// верх листвы
 								x,
 								p1.y - Random(600, 800) * p1.z,
 								0,
-								// leaves color
+								// цвет листвы
 								LSHA(
 									25 + Random(9),
 									80 + Random(9),
@@ -880,17 +879,17 @@ const oninitCanvas = () => {
 								)
 							);
 						} else {
-							// rock
-							// rock bottom
+							// камень
+							// низ камня
 							DrawPoly(
 								(x = p1.x + p1.z * x),
 								p1.y,
 								p1.z * Random(200, 250),
-								// rock top
+								// верх камня
 								x + p1.z * Random(99, -99),
 								p1.y - Random(200, 250) * p1.z,
 								p1.z * Random(99),
-								// rock color
+								// цвет камня
 								LSHA(
 									50 + Random(19),
 									25 + Random(19),
@@ -903,35 +902,28 @@ const oninitCanvas = () => {
 				}
 			}
 
-			// DEBUG REMOVE FROM MINFIED
-			UpdateDebugPost();
-
-			/////////////////////////////////////////////////////////////////////////////////////
-			// draw and update time
-			/////////////////////////////////////////////////////////////////////////////////////
-
 			if (mouseWasPressed) {
-				// show and update time
+				// показать и обновить время
 				DrawText(
 					Math.ceil((time = Clamp(time - timeDelta, 0, maxTime))),
 					9
 				);
-				// set right alignment for distance
+				// установить правое выравнивание для расстояния
 				context.textAlign = "right";
-				// show distance
+				// показать расстояние
 				DrawText(0 | (playerPos.z / 1e3), c.width - 9);
 			} else {
-				// set center alignment for title
+				// установить центральное выравнивание для заголовка
 				context.textAlign = "center";
-				// draw title text
-				DrawText("vue jumper", c.width / 2);
+				// нарисовать текст заголовка
+				DrawText("ultra gonki", c.width / 2);
 			}
-			// kick off next frame
+			// запустить следующий кадр
 			requestAnimationFrame(Update);
 		}
 
 		/////////////////////////////////////////////////////////////////////////////////////
-		// math and helper functions
+		// математика и вспомогательные функции
 		/////////////////////////////////////////////////////////////////////////////////////
 
 		const LSHA = (l, s = 0, h = 0, a = 1) =>
@@ -945,7 +937,7 @@ const oninitCanvas = () => {
 			Lerp(((Math.sin(++randomSeed) + 1) * 1e5) % 1, min, max);
 
 		/////////////////////////////////////////////////////////////////////////////////////
-		// draw a trapazoid shaped poly
+		// нарисовать трапециевидный полигон
 		/////////////////////////////////////////////////////////////////////////////////////
 		function DrawPoly(x1, y1, w1, x2, y2, w2, fillStyle) {
 			context.beginPath((context.fillStyle = fillStyle));
@@ -957,23 +949,23 @@ const oninitCanvas = () => {
 		}
 
 		/////////////////////////////////////////////////////////////////////////////////////
-		// draw outlined hud text
+		// нарисовать контурный текст hud
 		/////////////////////////////////////////////////////////////////////////////////////
 		function DrawText(text, posX) {
-			// set font size
+			// установить размер шрифта
 			context.font = "9em impact";
-			// set font
+			// установить шрифт
 			context.fillStyle = LSHA(99, 0, 0, 0.5);
-			// fill text
+			// заполнить текст
 			context.fillText(text, posX, 129);
-			// line width
+			// ширина линии
 			context.lineWidth = 3;
-			// outline text
+			// контур текста
 			context.strokeText(text, posX, 129);
 		}
 
 		/////////////////////////////////////////////////////////////////////////////////////
-		// mouse input
+		// ввод с мыши
 		/////////////////////////////////////////////////////////////////////////////////////
 
 		let mouseDown = 0;
@@ -1011,7 +1003,7 @@ const oninitCanvas = () => {
 				return;
 			}
 
-			// adjust for pointer lock
+			// коррекция для блокировки указателя
 			mouseLockX += e.movementX;
 			mouseLockX = Clamp(
 				mouseLockX,
@@ -1019,7 +1011,7 @@ const oninitCanvas = () => {
 				window.innerWidth / 2
 			);
 
-			// apply curve to input
+			// применить кривую к вводу
 			const inputCurve = 1.5;
 			mouseX = mouseLockX;
 			mouseX /= window.innerWidth / 2;
@@ -1031,7 +1023,7 @@ const oninitCanvas = () => {
 		};
 
 		/////////////////////////////////////////////////////////////////////////////////////
-		// touch control
+		// управление сенсором
 		/////////////////////////////////////////////////////////////////////////////////////
 
 		if (typeof ontouchend != "undefined") {
@@ -1043,7 +1035,7 @@ const oninitCanvas = () => {
 
 				if (mouseDown) return;
 
-				// average all touch positions
+				// среднее всех позиций касания
 				let x = 0,
 					y = 0;
 				for (let touch of e.touches) {
@@ -1061,7 +1053,7 @@ const oninitCanvas = () => {
 		}
 
 		/////////////////////////////////////////////////////////////////////////////////////
-		// debug stuff
+		// отладочные функции
 		/////////////////////////////////////////////////////////////////////////////////////
 
 		let debugPrintLines;
@@ -1069,16 +1061,16 @@ const oninitCanvas = () => {
 
 		function UpdateDebugPre() {
 			debugPrintLines = [];
-			// R = restart
+			// R = перезапуск
 			if (inputWasPushed[82]) {
 				mouseLockX = 0;
 				StartLevel();
 			}
-			// 1 = screenshot
+			// 1 = скриншот
 			if (inputWasPushed[49]) {
 				snapshot = 1;
 
-				// use 1080p resolution
+				// использовать разрешение 1080p
 				c.width = 1920;
 				c.height = 1080;
 			}
@@ -1128,7 +1120,7 @@ const oninitCanvas = () => {
 		}
 
 		/////////////////////////////////////////////////////////////////////////////////////
-		// frame rate counter
+		// счетчик частоты кадров
 		/////////////////////////////////////////////////////////////////////////////////////
 
 		let lastFpsMS = 0;
@@ -1146,7 +1138,7 @@ const oninitCanvas = () => {
 		}
 
 		/////////////////////////////////////////////////////////////////////////////////////
-		// keyboard control
+		// клавиатурное управление
 		/////////////////////////////////////////////////////////////////////////////////////
 
 		let inputIsDown = [];
@@ -1160,10 +1152,11 @@ const oninitCanvas = () => {
 		}
 
 		/////////////////////////////////////////////////////////////////////////////////////
-		// init hue jumper
+		// инициализация ultra gonki
 		/////////////////////////////////////////////////////////////////////////////////////
 
-		// startup and kick off update loop
+		// запуск и начало цикла обновления
+
 		StartLevel();
 		Update();
 	});
