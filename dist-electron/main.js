@@ -9,7 +9,7 @@ function createWindow() {
       nodeIntegration: true
     }
   });
-  mainWindow.loadFile("electron/index.html");
+  mainWindow.loadFile("./index.html");
   mainWindow.setMenu(null);
   mainWindow.setFullScreen(true);
   mainWindow.webContents.openDevTools();

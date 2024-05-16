@@ -12,7 +12,7 @@ function createWindow() {
 	});
 
 	// Загрузка вашего приложения
-	mainWindow.loadFile("electron/index.html");
+	mainWindow.loadFile("./index.html");
 
 	// Скрытие меню окна
 	mainWindow.setMenu(null);
